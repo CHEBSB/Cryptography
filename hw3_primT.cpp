@@ -41,7 +41,6 @@ public:
     void lenCheck();            // renew one's length
     void print();               // print the number in hex
 };
-int pow(int a, int x);          // a to the power of x
 // Miller-Rabin Primality Test
 bool MillerRabin(BigNum&, const int&);
 
@@ -79,26 +78,16 @@ int main(void)
     srand(time(NULL));          // set seed
     // loop until a prime is generated
     while (flag == false) {
-        /*
         // generate 63 integers within [0, 15]
         for (i = 1; i < 64; i++)
             R[i] = rand() % 16;
         // least significant byte = odd
         R[0] = 2 * (rand() % 8) + 1;
-        */
-        // generate 256 bits
-        for (i = 1; i < 64; i++)
-            R[i] = 8 * (rand() % 2) + 4 * (rand() % 2)
-                 + 2 * (rand() % 2) + (rand() % 2);
-        // least significant bit = 1
-        R[0] = 8 * (rand() % 2) + 4 * (rand() % 2)
-             + 2 * (rand() % 2) + 1;
         r.assg(R, 64);              // 256-bit number  
         // primality test
         if (!(r.leq1())) {
-            if (r.TrialDiv() == true) {   
-                printf("hi!\n");      
-                if (MillerRabin(r, 5)) {
+            if (r.TrialDiv()) {   
+                if (MillerRabin(r, 8)) {
                     printf("r = ");
                     r.print();
                     flag = true;
@@ -106,25 +95,14 @@ int main(void)
             }
         }
         j += 1;
-        if (j % 5000 == 0) {
-            printf("5000 iterations done.\n");
+        if (j % 50000 == 0) {
+            printf("50000 iterations done.\n");
             j = 0;
         }
     }
     return 0;
 }
-
-// compute (a to the power of x). integers only
-int pow(int a, int x)
-{
-    int y = 1;                  // output
-
-    while (x > 0) {
-        y = y * a;
-        x -= 1;
-    }
-    return y;
-}       
+   
 // default constructor: init as 0
 BigNum::BigNum(void)
 {          
