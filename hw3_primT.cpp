@@ -35,6 +35,7 @@ public:
     // modular exponentiation
     BigNum modExp(const BigNum& b, BigNum& n);
     BigNum Lshift(int p);       // left-shift p positions
+    bool checkTable();          // if match with table
     bool TrialDiv();            // Trial Division
     // assign an array to be S[]
     void assg(const int*, const int&);                
@@ -86,7 +87,12 @@ int main(void)
         r.assg(R, 64);              // 256-bit number  
         // primality test
         if (!(r.leq1())) {
-            if (r.TrialDiv()) {   
+            if (r.checkTable()) {
+                    printf("r = ");
+                    r.print();
+                    flag = true;
+            }
+            else if (r.TrialDiv()) {   
                 if (MillerRabin(r, 8)) {
                     printf("r = ");
                     r.print();
@@ -541,6 +547,16 @@ bool BigNum::eq0()
     for (i = 0; i < this->length; i++)
         if (this->S[0] != 0) return false;
     return true;
+}
+// check if match any element in the Table
+bool BigNum::checkTable()
+{
+    int i;              // looping index
+
+    for (i = 0; i < 168; i++) 
+        if ((*this) == SmallP[i])
+            return true;
+    return false;
 }
 // test primality using test division
 bool BigNum::TrialDiv()
