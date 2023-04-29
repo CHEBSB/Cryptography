@@ -1,9 +1,9 @@
-// COM5335 Homework 3: Rabin Encryption
+// COM5335 Homework 3: Miller-Rabin Primality Test
 // 111064502, 曾雋卿
 #include <stdio.h>
 #include <stdlib.h>
-#define L 200
-
+#include <time.h>
+#define L 150
 class BigNum {
 private:
     int sign;                   // its sign (+1 / -1)
@@ -16,99 +16,107 @@ public:
     BigNum(int, int, int*);
     // arithmetic: assume the inputs are positive
     BigNum operator+(const BigNum&);
+    BigNum operator+(const int&);
     BigNum operator-(const BigNum&);
+    BigNum operator-(const int&);
     BigNum operator*(const BigNum&);
+    BigNum operator*(const int&);
     BigNum operator/(BigNum&);
-    BigNum operator%(BigNum&);      
+    BigNum operator/(const int&);
+    BigNum operator%(BigNum&);
+    BigNum operator%(const int&);
+    bool operator==(const BigNum&);      
     bool operator>(const BigNum&);
     bool abscmp(const BigNum&); // compare abs value (true for >=)
+    bool IsEven();              // check if this is even
+    bool leq1();                // check if this <= 1
+    bool eq1();                 // check if this == 1
+    bool eq0();                 // check if this == 0
+    // modular exponentiation
+    BigNum modExp(const BigNum& b, BigNum& n);
     BigNum Lshift(int p);       // left-shift p positions
+    bool TrialDiv();            // Trial Division
+    // assign an array to be S[]
+    void assg(const int*, const int&);                
     void lenCheck();            // renew one's length
-    void print();               // print out the number in hex
+    void print();               // print the number in hex
 };
+int pow(int a, int x);          // a to the power of x
+// Miller-Rabin Primality Test
+bool MillerRabin(BigNum&, const int&);
 
-int pow(int a, int x);              // a to the power of x
-int charToInt(char*, int, int*);    // convert string to integer array
+// 168 small prime numbers for trial division
+const int smallP[] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
+31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97,
+101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151,
+157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211,
+223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271,
+277, 281, 283, 293, 307, 311, 313, 317, 331, 337, 347,
+349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409,
+419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467,
+479, 487, 491, 499, 503, 509, 521, 523, 541, 547, 557,
+563, 569, 571, 577, 587, 593, 599, 601, 607, 613, 617,
+619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683,
+691, 701, 709, 719, 727, 733, 739, 743, 751, 757, 761,
+769, 773, 787, 797, 809, 811, 821, 823, 827, 829, 839,
+853, 857, 859, 863, 877, 881, 883, 887, 907, 911, 919,
+929, 937, 941, 947, 953, 967, 971, 977, 983, 991, 997};
+BigNum SmallP[168];
 
 int main(void)
 {
-    char p_s[36];               // input prime numbers 
-    char q_s[36];
-    char plaintxt[64];          // input plain text
-    int plain[64];              // plain text in hex 
-    int P[32];                  // prime numbers in hex
-    int Q[32];
-    int l;                      // len of hex array
     int i;                      // looping index
-    char temp;                  // temp storage
-    
-    // read p
-    printf("p = ");
-    i = 0;
-    while (i < 32) {
-        scanf("%c", &temp);
-        if ((('0' <= temp) && (temp <= '9'))
-        || (('a' <= temp) && (temp <= 'f'))
-        || (('A' <= temp) && (temp <= 'F'))) {
-            p_s[i] = temp;
-            i += 1;
-        }
-    }
-    p_s[i] = '\0';
-    charToInt(p_s, 36, P);
-    // read q
-    printf("q = ");
-    i = 0;
-    while (i < 32) {
-        scanf("%c", &temp);
-        if ((('0' <= temp) && (temp <= '9'))
-        || (('a' <= temp) && (temp <= 'f'))
-        || (('A' <= temp) && (temp <= 'F'))) {
-            q_s[i] = temp;
-            i += 1;
-        }
-    }
-    q_s[i] = '\0';
-    charToInt(q_s, 36, Q);
-    // convert to big number
-    BigNum p(1, 32, P);
-    BigNum q(1, 32, Q);
-    // compute and print N = p * q
-    BigNum N = p * q;
-    printf("n = pq = ");
-    N.print();
-    // read 56-byte plain text
-    printf("Plaintext: ");
-    i = 0;
-    while (i < 56) {
-        scanf("%c", &temp);
-        if ((('0' <= temp) && (temp <= '9'))
-        || (('a' <= temp) && (temp <= 'f'))
-        || (('A' <= temp) && (temp <= 'F'))) {
-            plaintxt[i] = temp;
-            i += 1;
-        }
-    }
-    plaintxt[i] = '\0';
-    // convert char to integer
-    l = charToInt(plaintxt, 64, plain);
-    // repetitively pad the last 16 bits
-    plain[l] = plain[l - 4];
-    plain[l + 1] = plain[l - 3];
-    plain[l + 2] = plain[l - 2];
-    plain[l + 3] = plain[l - 1];
-    l += 4;
-    // Rabin Encryption = Big Number Arithmetic
-    BigNum Plain(1, l, plain);
-    BigNum ciph = (Plain * Plain) % N;
-    printf("Ciphertext = ");
-    ciph.print();
+    int R[64];                  // array of 64 random numbers
+    bool flag;                  // whether we got a prime
+    BigNum r;                   // 256-bit number
+    int j = 0;                  // for debug
 
+
+    // convert prime number table to big number
+    for (i = 0; i < 168; i++)
+        SmallP[i] = smallP[i];
+    flag = false;
+    srand(time(NULL));          // set seed
+    // loop until a prime is generated
+    while (flag == false) {
+        /*
+        // generate 63 integers within [0, 15]
+        for (i = 1; i < 64; i++)
+            R[i] = rand() % 16;
+        // least significant byte = odd
+        R[0] = 2 * (rand() % 8) + 1;
+        */
+        // generate 256 bits
+        for (i = 1; i < 64; i++)
+            R[i] = 8 * (rand() % 2) + 4 * (rand() % 2)
+                 + 2 * (rand() % 2) + (rand() % 2);
+        // least significant bit = 1
+        R[0] = 8 * (rand() % 2) + 4 * (rand() % 2)
+             + 2 * (rand() % 2) + 1;
+        r.assg(R, 64);              // 256-bit number  
+        // primality test
+        if (!(r.leq1())) {
+            if (r.TrialDiv() == true) {   
+                printf("hi!\n");      
+                if (MillerRabin(r, 5)) {
+                    printf("r = ");
+                    r.print();
+                    flag = true;
+                }
+            }
+        }
+        j += 1;
+        if (j % 5000 == 0) {
+            printf("5000 iterations done.\n");
+            j = 0;
+        }
+    }
     return 0;
 }
 
 // compute (a to the power of x). integers only
-int pow(int a, int x) {
+int pow(int a, int x)
+{
     int y = 1;                  // output
 
     while (x > 0) {
@@ -117,36 +125,9 @@ int pow(int a, int x) {
     }
     return y;
 }       
-// convert a string of length l to hex integer array
-int charToInt(char* s, int l, int* A) {
-    int i, j;           // looping indices
-    int k = 0;          // counter of digit
-    int temp;           // temp storage
- 
-    for (i = 0; i < l; i++) {
-        if (('0' <= s[i]) && (s[i] <= '9')) {
-            temp = s[i] - '0';
-            A[k] = temp;
-            k += 1;
-        }
-        else if (('a' <= s[i]) && (s[i] <= 'f')) {
-            temp = s[i] - 'a' + 0x0a;
-            A[k] = temp;
-            k += 1;
-        }
-        else if (('A' <= s[i]) && (s[i] <= 'F')) {
-            temp = s[i] - 'A' + 0x0a;
-            A[k] = temp;
-            k += 1;
-        }
-        else if (s[i] == '\0')  // reach the end
-            return k;
-        // else, skip whitespace
-    }
-    return k;
-}
 // default constructor: init as 0
-BigNum::BigNum(void) {          
+BigNum::BigNum(void)
+{          
     int i;                      // looping index
 
     sign = 1;
@@ -155,7 +136,8 @@ BigNum::BigNum(void) {
         S[i] = 0;
 }
 // copy constructor
-BigNum::BigNum(const BigNum& another) {
+BigNum::BigNum(const BigNum& another)
+{
     int i;                      // looping index
 
     sign = another.sign;
@@ -164,7 +146,8 @@ BigNum::BigNum(const BigNum& another) {
         S[i] = another.S[i];
 }
 // convert an integer into BigNum
-BigNum::BigNum(const int& n) {  
+BigNum::BigNum(const int& n)
+{  
     int i = 0;                  // looping index
     int K;
 
@@ -182,7 +165,8 @@ BigNum::BigNum(const int& n) {
     if (n == 0) length = 1;     // handle the case n = 0
 }
 // detail-specify constructor
-BigNum::BigNum(int sgn, int l , int* seq) {
+BigNum::BigNum(int sgn, int l , int* seq)
+{
     int i;                      // looping index
 
     sign = sgn;
@@ -192,7 +176,8 @@ BigNum::BigNum(int sgn, int l , int* seq) {
     for (i = l; i < L; i++) 
         S[i] = 0;
 }
-void BigNum::lenCheck(void) {
+void BigNum::lenCheck(void)
+{
     int i;                      // looping index
 
     for (i = L - 1; i > 0; i--) // find largest nonzero digit
@@ -202,8 +187,42 @@ void BigNum::lenCheck(void) {
         }
     this->length = 1;
 }
+// modular exponentiation: compute (a^b) mod n
+BigNum BigNum::modExp(const BigNum& b, BigNum& n)
+{
+    int* b_bit;             // b in binary representation
+    int k = 4 * (b.length);
+    int i, j;               // looping indices
+    int temp;               // temp storage
+    BigNum d(1);            // d = 1
+
+    b_bit = (int*)calloc(k, sizeof(int));
+    // convert b to bit array
+    for (i = 0, j = 0; i < b.length; i++, j += 4) {
+        temp = b.S[i]; 
+        b_bit[j] = temp % 2;
+        temp = temp / 2;
+        b_bit[j + 1] = temp % 2;
+        temp = temp / 2;
+        b_bit[j + 2] = temp % 2;
+        temp = temp / 2;
+        b_bit[j + 3] = temp % 2;
+    }
+    // modular exponentiation
+    for (i = k - 1, j = 0; i >= 0; i--) {
+        j = 2 * j;
+        d = (d * d) % n;
+        if (b_bit[i] == 1) {
+            j += 1;
+            d = (d * (*this)) % n;
+        }
+    }
+    free(b_bit);
+    return d;
+}
 // multiply the number by 16 to the power of p
-BigNum BigNum::Lshift(int p) {
+BigNum BigNum::Lshift(int p)
+{
     int i;                      // looping index
     BigNum newB;
 
@@ -218,7 +237,8 @@ BigNum BigNum::Lshift(int p) {
     return newB;
 }
 // compare absolute value (return true when >=)
-bool BigNum::abscmp(const BigNum& another) {
+bool BigNum::abscmp(const BigNum& another)
+{
     int i;                      // looping index
 
     if (this->length > another.length)  return true;
@@ -230,7 +250,8 @@ bool BigNum::abscmp(const BigNum& another) {
     }
     return true;                // they are equal
 }
-bool BigNum::operator>(const BigNum& another) {
+bool BigNum::operator>(const BigNum& another)
+{
     int i;                      // looping index
 
     if (this->sign == 1 && another.sign == -1) return true;
@@ -254,55 +275,163 @@ bool BigNum::operator>(const BigNum& another) {
     }
     return false;               // they are equal
 }
-BigNum BigNum::operator+(const BigNum& another) {
+bool BigNum::operator==(const BigNum& another)
+{
+    int i;                      // looping index
+
+    if (this->sign != another.sign)
+        return false;
+    if (this->length != another.length)
+        return false;                 
+    for (i = this->length; i >= 0; i--) {
+        if (this->S[i] != another.S[i])
+            return false;
+    }
+    return true;               // they are equal
+}
+BigNum BigNum::operator+(const BigNum& another)
+{
     int i;                      // looping index
     int maxL;                   // larger length of the 2
     BigNum sum;                 // sum of the 2 numebrs
 
     maxL = (this->length > another.length)? this->length: another.length;
-    sum.sign = 1;
-    sum.length = maxL;
-    for (i = 0; i < maxL; i++) {
-        sum.S[i] += (this->S[i] + another.S[i]);
-        if (sum.S[i] > 15) {
-            sum.S[i] -= 16;
-            sum.S[i + 1] += 1;
+    if (this->sign == another.sign) {
+        sum.sign = this->sign;
+        for (i = 0; i < maxL; i++) {
+            sum.S[i] += (this->S[i] + another.S[i]);
+            if (sum.S[i] > 15) {
+                sum.S[i] -= 16;
+                sum.S[i + 1] += 1;
+            }
+        }  
+    } else if (this->sign == 1) {   // this > 0, another < 0
+        if (this->abscmp(another)) {        // result > 0
+            sum.sign = 1;
+            for (i = 0; i < maxL; i++) {
+                sum.S[i] += (this->S[i] - another.S[i]);
+                if (sum.S[i] < 0) {
+                    sum.S[i] += 16;
+                    sum.S[i + 1] -= 1;
+                }
+            }
+        } else {                            // result < 0
+            sum.sign = -1;
+            for (i = 0; i < maxL; i++) {
+                sum.S[i] += (another.S[i] - this->S[i]);
+                if (sum.S[i] < 0) {
+                    sum.S[i] += 16;
+                    sum.S[i + 1] -= 1;
+                }
+            }
         }
-    }
-    if (sum.S[maxL] != 0) sum.length += 1;
-    return sum;
-}
-BigNum BigNum::operator-(const BigNum& another) {
-    int i;                      // looping index
-    BigNum result;              // = (this - another)
-
-    if (this->abscmp(another)) {            // result is nonnegative
-        result.sign = 1;
-        for (i = 0; i < this->length; i++) {
-            result.S[i] += (this->S[i] - another.S[i]);
-            if (result.S[i] < 0) {
-                result.S[i] += 16;
-                result.S[i + 1] -= 1;
+    } else {                        // this < 0, another > 0
+        if (this->abscmp(another)) {        // result < 0
+            sum.sign = -1;
+            for (i = 0; i < maxL; i++) {
+                sum.S[i] += (this->S[i] - another.S[i]);
+                if (sum.S[i] < 0) {
+                    sum.S[i] += 16;
+                    sum.S[i + 1] -= 1;
+                }
+            }
+        } else {                            // result > 0
+            sum.sign = 1;
+            for (i = 0; i < maxL; i++) {
+                sum.S[i] += (another.S[i] - this->S[i]);
+                if (sum.S[i] < 0) {
+                    sum.S[i] += 16;
+                    sum.S[i + 1] -= 1;
+                }
             }
         }
     }
-    else {                      // negative result => -(B - A)
-        result.sign = -1;           
-        for (i = 0; i < another.length; i++) {
-            result.S[i] += (another.S[i] - this->S[i]);
-            if (result.S[i] < 0) {
-                result.S[i] += 16;
-                result.S[i + 1] -= 1;
+    sum.lenCheck();
+    return sum;
+}
+BigNum BigNum::operator+(const int& b)
+{
+    BigNum B(b);
+    return ((*this) + B);
+}
+BigNum BigNum::operator-(const BigNum& another)
+{
+    int i;                      // looping index
+    int maxL;                   // = max{Length1, Length2}
+    BigNum result;              // = (this - another)
+
+    maxL = (this->length > another.length)? this->length: another.length;
+    if ((*this) > another) {    // result is positive
+        result.sign = 1;
+        // this > 0, another < 0
+        if (this->sign != another.sign) {
+            for (i = 0; i < maxL; i++) {
+                result.S[i] += (this->S[i] + another.S[i]);
+                if (result.S[i] > 15) {
+                    result.S[i] -= 16;
+                    result.S[i + 1] += 1;
+                }
+            }
+        } else if (this->sign == 1) {   // both > 0
+            for (i = 0; i < maxL; i++) {
+                result.S[i] += (this->S[i] - another.S[i]);
+                if (result.S[i] < 0) {
+                    result.S[i] += 16;
+                    result.S[i + 1] -= 1;
+                }
+            }
+        } else {                        // both < 0
+            for (i = 0; i < maxL; i++) {
+                result.S[i] += (another.S[i] - this->S[i]);
+                if (result.S[i] < 0) {
+                    result.S[i] += 16;
+                    result.S[i + 1] -= 1;
+                }
+            }
+        }
+    } else {            // result is negative
+        result.sign = -1;
+        // this < 0, another > 0
+        if (this->sign != another.sign) {
+            for (i = 0; i < maxL; i++) {
+                result.S[i] += (another.S[i] + this->S[i]);
+                if (result.S[i] > 15) {
+                    result.S[i] -= 16;
+                    result.S[i + 1] += 1;
+                }
+            }
+        } else if (this->sign == 1) {   // both > 0
+            for (i = 0; i < maxL; i++) {
+                result.S[i] += (another.S[i] - this->S[i]);
+                if (result.S[i] < 0) {
+                    result.S[i] += 16;
+                    result.S[i + 1] -= 1;
+                }
+            }
+        } else {                        // both < 0
+            for (i = 0; i < maxL; i++) {
+                result.S[i] += (this->S[i] - another.S[i]);
+                if (result.S[i] < 0) {
+                    result.S[i] += 16;
+                    result.S[i + 1] -= 1;
+                }
             }
         }
     }
     result.lenCheck();
     return result;
 }
-BigNum BigNum::operator*(const BigNum& another) {
+BigNum BigNum::operator-(const int& b)
+{
+    BigNum B(b);
+    return ((*this) - B);
+}
+BigNum BigNum::operator*(const BigNum& another)
+{
     int i, j;                   // looping indices
     BigNum prod;                // product of the 2
 
+    prod.sign = (this->sign) * (another.sign);
     // shift-and-add multiplication
     for (i = 0; i < another.length; i++) {
         for (j = 0; j < this->length; j++) {
@@ -316,7 +445,13 @@ BigNum BigNum::operator*(const BigNum& another) {
     prod.lenCheck();
     return prod;
 }
-BigNum BigNum::operator/(BigNum& another) {
+BigNum BigNum::operator*(const int& b)
+{
+    BigNum B(b);
+    return ((*this) * B);
+}
+BigNum BigNum::operator/(BigNum& another)
+{
     int i, j;                   // looping index
     BigNum r(*this);            // remainder
     BigNum temp(another);       // temporary variable
@@ -338,26 +473,47 @@ BigNum BigNum::operator/(BigNum& another) {
     }
     return q;
 }   
-BigNum BigNum::operator%(BigNum& another) {
+BigNum BigNum::operator/(const int& b)
+{
+    BigNum B(b);
+    return ((*this) / B);
+}
+BigNum BigNum::operator%(BigNum& another)
+{
     int i, j;                   // looping index
     BigNum r(*this);            // remainder
     BigNum temp(another);       // temporary variable
 
-    i = -1;
-    for (i = -1; this->abscmp(temp); i++)
-        temp = temp.Lshift(1);  // go to next digit
-    if (i == -1)                // if this < another         
-        return r;               // return the original number
-    // if i = k, then this >= (temp left shifted by k)
-    for (j = i; j >= 0; j--) {
-        temp = another.Lshift(j);
-        while (r.abscmp(temp)) 
-            r = r - temp;
+    if (this->sign == 1) {
+        for (j = this->length - another.length; j >= 0; j--) {
+            temp = another.Lshift(j);
+            while (r.abscmp(temp)) 
+                r = r - temp;
+        }
+    } else {                    // if this < 0
+        r.sign = 1;
+        for (j = this->length - another.length; j >= 0; j--) {
+            temp = another.Lshift(j);
+            while (r.abscmp(temp)) 
+                r = r - temp;
+        }
+        r = temp - r;
     }
     r.lenCheck();
     return r;
-}
-void BigNum::print(void) {      // print the number in hexadecimal
+}    
+BigNum BigNum::operator%(const int& b)
+{
+    BigNum B(b);
+    return ((*this) % B);
+}   
+bool BigNum::IsEven()           // check if this is even
+{          
+    if ((this->S[0]) % 2 == 0) return true;
+    return false;
+}            
+void BigNum::print(void)        // print the number in hexadecimal
+{      
     int i;                      // looping index
     int k;                      // counter
 
@@ -370,4 +526,94 @@ void BigNum::print(void) {      // print the number in hexadecimal
         printf("%x", S[i]);     // starting from MSB
     }
     printf("\n");
+}
+// assign an array to be its value
+void BigNum::assg(const int* A, const int& l) 
+{
+    int i;              // looping index
+    
+    this->length = 1;
+    for (i = 0; i < l; i++) {
+        this->S[i] = A[i];
+        if (A[i] != 0) 
+            this->length = i + 1;
+    }
+    for (i = l; i < L; i++) 
+        this->S[i] = 0;
+}
+// check if this number <= 1
+bool BigNum::leq1()
+{
+    if (this->length > 1) return false;
+    if (this->S[0] < 2) return true;
+    return false;
+}
+// check if this number == 1
+bool BigNum::eq1()
+{
+    if (this->length > 1) return false;
+    if (this->S[0] == 1) return true;
+    return false;
+}
+// check if this number == 0
+bool BigNum::eq0()
+{
+    int i;      // looping index
+
+    for (i = 0; i < this->length; i++)
+        if (this->S[0] != 0) return false;
+    return true;
+}
+// test primality using test division
+bool BigNum::TrialDiv()
+{
+    int i;              // looping index
+    BigNum rem;         // remainder
+
+    for (i = 0; i < 168; i++) {
+        rem = (*this) % (SmallP[i]);
+        if (rem.eq0())
+            return false;
+    }
+    return true;
+}
+// Test if a number is prime with high probability
+bool MillerRabin(BigNum& n, const int& T)
+{
+    int i, j;           // looping indices
+    int k;              // n - 1 = m * (2^k)
+    BigNum m;
+    BigNum n_1;         // represent (n - 1)
+    BigNum a;           // random number in iteration
+    BigNum y;           // y = a^m mod n
+
+    // compute k and m
+    m = n - 1;
+    n_1 = m;            // record value of (n - 1)
+    k = 0;
+    while (m.IsEven()) {
+        m = m / 2;
+        k += 1;
+    }
+    // repeat T times
+    for (i = 0; i < T; i++) {
+        // generate a
+        a = 0;
+        while (a.leq1()) {
+            a = rand();
+            a = a % n_1;
+        }
+        // compute y
+        y = a.modExp(m, n);
+        if (!(y.eq1()) && !(y == n_1)) {
+            j = 1;
+            while (j < k && !(y == n_1)) {
+                y = (y * y) % n;
+                if (y.eq1()) return false;  // composite
+                j += 1;
+            }
+            if (!(y == n_1)) return false;
+        }
+    } 
+    return true;            // high probability it is prime
 }
