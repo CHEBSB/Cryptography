@@ -27,7 +27,6 @@ public:
     void print();               // print out the number in hex
 };
 
-int pow(int a, int x);              // a to the power of x
 int charToInt(char*, int, int*);    // convert string to integer array
 
 int main(void)
@@ -107,19 +106,10 @@ int main(void)
 
     return 0;
 }
-
-// compute (a to the power of x). integers only
-int pow(int a, int x) {
-    int y = 1;                  // output
-
-    while (x > 0) {
-        y = y * a;
-        x -= 1;
-    }
-    return y;
-}       
+    
 // convert a string of length l to hex integer array
-int charToInt(char* s, int l, int* A) {
+int charToInt(char* s, int l, int* A)
+{
     int i, j;           // looping indices
     int k = 0;          // counter of digit
     int temp;           // temp storage
@@ -147,7 +137,8 @@ int charToInt(char* s, int l, int* A) {
     return k;
 }
 // default constructor: init as 0
-BigNum::BigNum(void) {          
+BigNum::BigNum(void)
+{          
     int i;                      // looping index
 
     sign = 1;
@@ -156,7 +147,8 @@ BigNum::BigNum(void) {
         S[i] = 0;
 }
 // copy constructor
-BigNum::BigNum(const BigNum& another) {
+BigNum::BigNum(const BigNum& another)
+{
     int i;                      // looping index
 
     sign = another.sign;
@@ -165,7 +157,8 @@ BigNum::BigNum(const BigNum& another) {
         S[i] = another.S[i];
 }
 // convert an integer into BigNum
-BigNum::BigNum(const int& n) {  
+BigNum::BigNum(const int& n)
+{  
     int i = 0;                  // looping index
     int K;
 
@@ -183,7 +176,8 @@ BigNum::BigNum(const int& n) {
     if (n == 0) length = 1;     // handle the case n = 0
 }
 // detail-specify constructor
-BigNum::BigNum(int sgn, int l , int* seq) {
+BigNum::BigNum(int sgn, int l , int* seq)
+{
     int i;                      // looping index
 
     sign = sgn;
@@ -193,7 +187,8 @@ BigNum::BigNum(int sgn, int l , int* seq) {
     for (i = l; i < L; i++) 
         S[i] = 0;
 }
-void BigNum::lenCheck(void) {
+void BigNum::lenCheck(void)
+{
     int i;                      // looping index
 
     for (i = L - 1; i > 0; i--) // find largest nonzero digit
@@ -204,7 +199,8 @@ void BigNum::lenCheck(void) {
     this->length = 1;
 }
 // multiply the number by 16 to the power of p
-BigNum BigNum::Lshift(int p) {
+BigNum BigNum::Lshift(int p)
+{
     int i;                      // looping index
     BigNum newB;
 
@@ -219,7 +215,8 @@ BigNum BigNum::Lshift(int p) {
     return newB;
 }
 // compare absolute value (return true when >=)
-bool BigNum::abscmp(const BigNum& another) {
+bool BigNum::abscmp(const BigNum& another)
+{
     int i;                      // looping index
 
     if (this->length > another.length)  return true;
@@ -231,7 +228,8 @@ bool BigNum::abscmp(const BigNum& another) {
     }
     return true;                // they are equal
 }
-bool BigNum::operator>(const BigNum& another) {
+bool BigNum::operator>(const BigNum& another)
+{
     int i;                      // looping index
 
     if (this->sign == 1 && another.sign == -1) return true;
@@ -255,7 +253,8 @@ bool BigNum::operator>(const BigNum& another) {
     }
     return false;               // they are equal
 }
-BigNum BigNum::operator+(const BigNum& another) {
+BigNum BigNum::operator+(const BigNum& another)
+{
     int i;                      // looping index
     int maxL;                   // larger length of the 2
     BigNum sum;                 // sum of the 2 numebrs
@@ -273,7 +272,8 @@ BigNum BigNum::operator+(const BigNum& another) {
     if (sum.S[maxL] != 0) sum.length += 1;
     return sum;
 }
-BigNum BigNum::operator-(const BigNum& another) {
+BigNum BigNum::operator-(const BigNum& another)
+{
     int i;                      // looping index
     BigNum result;              // = (this - another)
 
@@ -300,7 +300,8 @@ BigNum BigNum::operator-(const BigNum& another) {
     result.lenCheck();
     return result;
 }
-BigNum BigNum::operator*(const BigNum& another) {
+BigNum BigNum::operator*(const BigNum& another)
+{
     int i, j;                   // looping indices
     BigNum prod;                // product of the 2
 
@@ -317,7 +318,8 @@ BigNum BigNum::operator*(const BigNum& another) {
     prod.lenCheck();
     return prod;
 }
-BigNum BigNum::operator/(BigNum& another) {
+BigNum BigNum::operator/(BigNum& another)
+{
     int i, j;                   // looping index
     BigNum r(*this);            // remainder
     BigNum temp(another);       // temporary variable
@@ -339,7 +341,8 @@ BigNum BigNum::operator/(BigNum& another) {
     }
     return q;
 }   
-BigNum BigNum::operator%(BigNum& another) {
+BigNum BigNum::operator%(BigNum& another)
+{
     int i, j;                   // looping index
     BigNum r(*this);            // remainder
     BigNum temp(another);       // temporary variable
@@ -358,7 +361,8 @@ BigNum BigNum::operator%(BigNum& another) {
     r.lenCheck();
     return r;
 }
-void BigNum::print(void) {      // print the number in hexadecimal
+void BigNum::print(void)        // print the number in hex
+{      
     int i;                      // looping index
     int k;                      // counter
 
