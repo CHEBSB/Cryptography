@@ -69,8 +69,6 @@ int main(void)
     int R[64];                  // array of 64 random numbers
     bool flag;                  // whether we got a prime
     BigNum r;                   // 256-bit number
-    int j = 0;                  // for debug
-
 
     // convert prime number table to big number
     for (i = 0; i < 168; i++)
@@ -91,19 +89,13 @@ int main(void)
                     printf("r = ");
                     r.print();
                     flag = true;
-            }
-            else if (r.TrialDiv()) {   
+            } else if (r.TrialDiv()) {   
                 if (MillerRabin(r, 8)) {
                     printf("r = ");
                     r.print();
                     flag = true;
                 }
             }
-        }
-        j += 1;
-        if (j % 50000 == 0) {
-            printf("50000 iterations done.\n");
-            j = 0;
         }
     }
     return 0;
