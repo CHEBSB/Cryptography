@@ -594,10 +594,17 @@ void BigNum::print(void)        // print the number in hexadecimal
 void BigNum::printPlain()       // omit 16 padded bits
 {     
     int i;                      // looping index
-    int k;                      // counter
+    int k = 0;                  // counter
 
     if (sign == -1) printf("-");
-    for (i = length - 1, k = 0; i >= 4; i--, k++) {
+    for (i = 60 - length; i > 0; i--, k++) {
+        if (k == 8) {
+            printf(" ");
+            k = 0;
+        }
+        printf("0");
+    }
+    for (i = length - 1; i >= 4; i--, k++) {
         if (k == 8) {
             printf(" ");
             k = 0;
